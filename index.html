@@ -298,6 +298,44 @@
 
     <script>
         let globalOrders = []; 
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbzzGwuFfd2FcTaiKIaMHiaQOELwEaNTKkmYu2eWDQ-kA7TJdYWX3mcovEvHfBPqj5XseQ/exec";
+
+
+let googleMaster = [];
+
+
+async function loadGoogleDatabase(){
+
+    try{
+
+        const res = await fetch(GOOGLE_API_URL);
+
+        const data = await res.json();
+
+
+        globalOrders = data.orders || [];
+
+        googleMaster = data.master || [];
+
+
+        console.log("Google orders:",globalOrders.length);
+
+        console.log("Google master:",googleMaster.length);
+
+
+
+        buildPartDropdown();
+
+
+    }catch(err){
+
+        console.error("Google同步失敗",err);
+
+        alert("Google資料同步失敗");
+
+    }
+
+}
         const INITIAL_MASTER_ROWS = 100;
 
         function switchTab(tab) {
@@ -619,11 +657,16 @@
         }
 
         // 輔助函式：從對照表取得指定件號對應的「品名」
-        function getPartName(partNo) {
-            const db = JSON.parse(localStorage.getItem('order_qr_master_db') || "[]");
-            const found = db.find(item => item.partNo === partNo);
-            return found ? found.name : partNo; 
-        }
+       function getPartName(partNo){
+
+    const found = googleMaster.find(
+        item=>item.partNo===partNo
+    );
+
+
+    return found ? found.name : partNo;
+
+}
 
         function buildPartDropdown() {
             const categoryEl = document.getElementById('category-dropdown');
@@ -1113,8 +1156,8 @@
             });
         }
 
-        combineSavedOrders();
-        loadManualTable();
+        loadGoogleDatabase();
+loadManualTable();
     </script>
 </body>
 </html>
