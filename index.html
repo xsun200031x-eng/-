@@ -825,15 +825,16 @@
 
             orders.forEach((order, idx) => {
                 const displayName = getPartName(order.partNo); 
+                const displayOrderNo = order.orderNo ? `${order.orderNo}-001` : order.orderNo;
                 const wrapper = document.createElement('div');
                 wrapper.className = 'flex flex-col items-center gap-2';
                 wrapper.dataset.name = displayName;
-                wrapper.dataset.content = order.orderNo;
+                wrapper.dataset.content = displayOrderNo;
                 wrapper.innerHTML = `
                     <div class="qr-card">
                         <div class="qr-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</div>
                         <div class="qr-box"><canvas id="qr-canvas-${idx}"></canvas></div>
-                        <div class="qr-content">${escapeHtml(order.orderNo)}</div>
+                        <div class="qr-content">${escapeHtml(displayOrderNo)}</div>
                     </div>
                     <button class="text-[11px] font-bold text-blue-400 hover:text-blue-300 bg-slate-900/60 px-3 py-1.5 rounded-lg">⬇️ 下載圖片</button>
                 `;
@@ -842,13 +843,13 @@
                 if (typeof QRious !== 'undefined') {
                     new QRious({
                         element: document.getElementById(`qr-canvas-${idx}`),
-                        value: order.orderNo,
+                        value: displayOrderNo,
                         size: 100, // 修正回 100px 尺寸
                         level: 'H'
                     });
                 }
 
-                wrapper.querySelector('button').onclick = () => downloadCardImage(displayName, order.orderNo);
+                wrapper.querySelector('button').onclick = () => downloadCardImage(displayName, displayOrderNo);
             });
         }
 
