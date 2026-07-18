@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>工單 QR 掃描看板 (手機移動離線版)</title>
+    <title>工單 QR 產生器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -123,15 +123,17 @@
     <div class="max-w-md mx-auto px-4 pt-16 flex flex-col gap-6">
         
         <div class="text-center">
-            <h1 class="text-xl font-black tracking-wider text-white">工單 QR 掃描看板</h1>
+            <h1 class="text-xl font-black tracking-wider text-white">工單 QR 產生器</h1>
         </div>
+
+        <div id="sync-status-bar" class="hidden text-center text-xs font-bold text-blue-300 bg-blue-950/50 border border-blue-900/40 rounded-xl py-2 px-3"></div>
 
         <div class="grid grid-cols-2 bg-slate-800/80 p-1 rounded-2xl shadow-inner">
             <button id="tab-auto-btn" onclick="switchTab('auto')" class="py-3 px-4 rounded-xl text-sm font-bold transition-all text-white bg-blue-600 shadow-md">
-                ⚡ 快速工單
+                搜尋工單
             </button>
             <button id="tab-manual-btn" onclick="switchTab('manual')" class="py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white">
-                ✍️ 臨時手動
+                手動產生
             </button>
         </div>
 
@@ -160,9 +162,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5">3. 手動搜尋 (件號 / 複合品名關鍵字)</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5">3. 手動搜尋 (件號 / 品名)</label>
                     <div class="relative">
-                        <input type="text" id="manual-search-input" oninput="searchManually()" placeholder="例：輸入「托架」或「A型」皆可篩選" class="w-full border-2 border-slate-700 rounded-xl p-3 bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm">
+                        <input type="text" id="manual-search-input" oninput="searchManually()" placeholder="例：輸入「278」或「KDU」皆可搜尋" class="w-full border-2 border-slate-700 rounded-xl p-3 bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm">
                         <button onclick="clearSearch()" class="absolute right-3 top-3 text-slate-500 hover:text-white text-sm">✕</button>
                     </div>
                 </div>
@@ -172,7 +174,7 @@
         <div id="panel-manual" class="space-y-4 hidden">
             <div class="bg-slate-800/90 rounded-2xl p-5 shadow-xl border border-slate-700/50 space-y-3">
                 <div class="flex justify-between items-center">
-                    <label class="block text-xs font-bold text-slate-400">✍️ 手動輸入表格（品名 / 內容）</label>
+                    <label class="block text-xs font-bold text-slate-400">✍️ 手動輸入（品名 / 內容）</label>
                     <button onclick="addManualRow()" class="text-xs font-bold text-blue-400 hover:text-blue-300">＋ 新增列</button>
                 </div>
                 <div class="text-[11px] text-blue-400 bg-blue-950/40 p-2 rounded-lg border border-blue-900/30">
@@ -200,14 +202,14 @@
             <div class="text-xs text-slate-400 mb-4 w-full flex justify-between items-center px-1">
                 <span class="font-bold">🎯 工單條碼顯示看板</span>
                 <div class="flex items-center gap-3">
-                    <button onclick="downloadAllVisibleCards()" class="text-blue-400 hover:text-blue-300 font-bold">⬇️ 下載全部</button>
+                    <button onclick="downloadAllVisibleCards()" class="text-blue-400 hover:text-blue-300 font-bold">⬇️ 下載</button>
                     <span id="match-count" class="text-blue-400 font-bold"></span>
                 </div>
             </div>
             
             <div id="results-container" class="w-full flex flex-wrap justify-center gap-4">
                 <div id="empty-state-hint" class="text-center py-12 text-slate-500 text-sm">
-                    請選取上方分類，或切換到「臨時手動」打字。
+                    請選取上方分類，或切換到「手動產生」打字。
                 </div>
             </div>
         </div>
@@ -231,7 +233,7 @@
             
 <div id="panel-db-files" class="p-5 flex flex-col gap-4 overflow-y-auto">
     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-        <label class="block text-xs font-bold text-slate-400 mb-2">📁 選擇工單檔案（可一次選多個）</label>
+        <label class="block text-xs font-bold text-slate-400 mb-2">📁 選擇工單檔案</label>
         <input type="file" id="excel-files" accept=".xlsx,.xls,.csv" multiple
         class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer" />
         <p id="file-status" class="text-[10px] text-slate-500 mt-2 font-mono">尚未載入記憶</p>
@@ -248,7 +250,7 @@
 
 <div id="panel-db-mapping" class="p-5 flex flex-col gap-3 overflow-y-auto hidden">
                 <div class="text-[11px] text-blue-400 bg-blue-950/40 p-2 rounded-lg border border-blue-900/30">
-                    💡 <b>小技巧：</b>品名欄位可以使用斜線 <code>/</code> 或逗號 <code>,</code> 隔開多個名字（例如：<code>前托架/中葉/車削</code>），手動搜尋時打任何一個字都能完美找到！
+                    💡 <b>小技巧：</b>品名欄位可以使用斜線 <code>/</code> 或逗號 <code>,</code> 隔開多個名字（例如：<code>278/KDU</code>），手動搜尋時打任何一個字都能完美找到！
                 </div>
                 <div class="flex-grow overflow-x-auto overflow-y-auto border border-slate-800 rounded-xl max-h-[250px] no-scrollbar bg-slate-950">
                     <table class="w-full text-left border-collapse text-xs">
@@ -269,7 +271,7 @@
             </div>
 
             <div id="panel-db-password" class="p-5 flex flex-col gap-4 overflow-y-auto hidden">
-                <input type="password" id="new-admin-password" placeholder="預設密碼為 1234..." class="w-full border-2 border-slate-800 rounded-xl p-3 bg-slate-950 font-bold focus:outline-none text-white text-sm">
+                <input type="password" id="new-admin-password" placeholder="預設密碼為 工號" class="w-full border-2 border-slate-800 rounded-xl p-3 bg-slate-950 font-bold focus:outline-none text-white text-sm">
                 <button onclick="changeAdminPassword()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs w-full shadow mt-2">更新密碼</button>
             </div>
         </div>
@@ -299,6 +301,82 @@
     <script>
         let globalOrders = []; 
         const INITIAL_MASTER_ROWS = 100;
+
+        // ================== GitHub 雲端同步設定 ==================
+        // ⚠️ 請將下面 GITHUB_TOKEN 換成你申請的 Fine-grained Personal Access Token
+        // （只授權此 repo、只給 Contents: Read and write 權限）
+        const GITHUB_OWNER = 'xsun200031x-eng';
+        const GITHUB_REPO = '-';
+        const GITHUB_BRANCH = 'main'; // 若你的預設分支不是 main，請改成正確的分支名稱（例如 master）
+        const GITHUB_TOKEN = 'github_pat_11CGKS3FQ0pmBLCMLTpyr3_gBUYxSwJMIlTgHH3615Nh7rCwIRrin6D98Pu9NpCKDQD6TEST4Knk0skSZL';
+        const DATA_MASTER_PATH = 'data/master_db.json';   // 對照表存放路徑
+        const DATA_ORDERS_PATH = 'data/orders_db.json';   // 已上傳工單檔案存放路徑
+        const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents`;
+
+        let masterDbCache = [];   // 對照表快取（記憶體中，供同步讀取用）
+        let filesDbCache = [];    // 工單檔案清單快取（記憶體中，供同步讀取用）
+
+        function utf8ToBase64(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+        function base64ToUtf8(b64) {
+            return decodeURIComponent(escape(atob((b64 || '').replace(/\n/g, ''))));
+        }
+
+        function setSyncStatus(msg, isError) {
+            const bar = document.getElementById('sync-status-bar');
+            if (!bar) return;
+            bar.textContent = (isError ? '⚠️ ' : '☁️ ') + msg;
+            bar.className = isError
+                ? "text-center text-xs font-bold text-rose-300 bg-rose-950/50 border border-rose-900/40 rounded-xl py-2 px-3"
+                : "text-center text-xs font-bold text-blue-300 bg-blue-950/50 border border-blue-900/40 rounded-xl py-2 px-3";
+        }
+        function clearSyncStatus() {
+            const bar = document.getElementById('sync-status-bar');
+            if (bar) bar.classList.add('hidden');
+        }
+
+        // 從 GitHub 讀取一個 JSON 資料檔，回傳 { content, sha }
+        async function githubGetFile(path) {
+            const url = `${GITHUB_API_BASE}/${path}?ref=${GITHUB_BRANCH}&_=${Date.now()}`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+            if (res.status === 404) return { content: null, sha: null };
+            if (!res.ok) throw new Error(`GitHub 讀取失敗 (${res.status})`);
+            const data = await res.json();
+            let parsed = [];
+            try { parsed = JSON.parse(base64ToUtf8(data.content || '')); } catch (e) { parsed = []; }
+            return { content: parsed, sha: data.sha };
+        }
+
+        // 把 JSON 資料寫回 GitHub（自動處理新建/覆寫）
+        async function githubSaveFile(path, jsonData, message) {
+            if (!GITHUB_TOKEN || GITHUB_TOKEN.startsWith('請貼上')) {
+                throw new Error('尚未設定 GitHub Token，請聯絡管理員在程式碼中填入 GITHUB_TOKEN');
+            }
+            let sha = null;
+            try { sha = (await githubGetFile(path)).sha; } catch (e) { /* 檔案可能不存在，忽略 */ }
+
+            const body = {
+                message: message || `更新資料 ${new Date().toLocaleString('zh-TW')}`,
+                content: utf8ToBase64(JSON.stringify(jsonData, null, 2)),
+                branch: GITHUB_BRANCH,
+            };
+            if (sha) body.sha = sha;
+
+            const res = await fetch(`${GITHUB_API_BASE}/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.message || `GitHub 寫入失敗 (${res.status})`);
+            }
+            return res.json();
+        }
 
         function switchTab(tab) {
             const panelAuto = document.getElementById('panel-auto');
@@ -421,29 +499,37 @@
             });
         }
 
-        function loadMasterDatabase() {
-            const stored = localStorage.getItem('order_qr_master_db');
-            if (stored) {
-                const data = JSON.parse(stored);
-                const count = Math.max(INITIAL_MASTER_ROWS, data.length + 15);
-                renderMasterTable(count);
-                const partInputs = document.querySelectorAll('.master-part');
-                const nameInputs = document.querySelectorAll('.master-name');
-                const catInputs = document.querySelectorAll('.master-category');
-                data.forEach((item, i) => {
-                    if (partInputs[i]) {
-                        partInputs[i].value = item.partNo || "";
-                        nameInputs[i].value = item.name || "";
-                        catInputs[i].value = item.category || "";
-                    }
-                });
-            } else {
-                renderMasterTable(INITIAL_MASTER_ROWS);
+        async function loadMasterDatabase() {
+            setSyncStatus('正在讀取最新對照表...');
+            try {
+                const remote = await githubGetFile(DATA_MASTER_PATH);
+                if (remote.content) {
+                    masterDbCache = remote.content;
+                    localStorage.setItem('order_qr_master_db', JSON.stringify(masterDbCache));
+                }
+                clearSyncStatus();
+            } catch (e) {
+                console.warn('讀取雲端對照表失敗，改用本機快取', e);
+                setSyncStatus('雲端連線失敗，顯示本機快取資料', true);
             }
+
+            const data = masterDbCache;
+            const count = Math.max(INITIAL_MASTER_ROWS, data.length + 15);
+            renderMasterTable(count);
+            const partInputs = document.querySelectorAll('.master-part');
+            const nameInputs = document.querySelectorAll('.master-name');
+            const catInputs = document.querySelectorAll('.master-category');
+            data.forEach((item, i) => {
+                if (partInputs[i]) {
+                    partInputs[i].value = item.partNo || "";
+                    nameInputs[i].value = item.name || "";
+                    catInputs[i].value = item.category || "";
+                }
+            });
             buildPartDropdown();
         }
 
-        function saveMasterDatabase() {
+        async function saveMasterDatabase() {
             const partInputs = document.querySelectorAll('.master-part');
             const nameInputs = document.querySelectorAll('.master-name');
             const catInputs = document.querySelectorAll('.master-category');
@@ -454,17 +540,36 @@
                 const category = catInputs[i].value.trim();
                 if (partNo) { db.push({ partNo, name, category }); }
             });
+            masterDbCache = db;
             localStorage.setItem('order_qr_master_db', JSON.stringify(db));
-            alert("對照表儲存成功！");
+
+            setSyncStatus('正在上傳對照表到雲端...');
+            try {
+                await githubSaveFile(DATA_MASTER_PATH, db, `更新對照表 (${db.length} 筆)`);
+                clearSyncStatus();
+                alert("對照表已儲存並同步到雲端，其他裝置也能看到！");
+            } catch (e) {
+                clearSyncStatus();
+                alert("⚠️ 對照表已存在本機，但雲端同步失敗：" + e.message);
+            }
             toggleMasterModal();
             buildPartDropdown();
         }
 
-        function clearMasterDatabase() {
-            if (confirm("確定要清空嗎？")) {
+        async function clearMasterDatabase() {
+            if (confirm("確定要清空嗎？（會同步清空雲端對照表，所有裝置都會受影響）")) {
+                masterDbCache = [];
                 localStorage.removeItem('order_qr_master_db');
                 renderMasterTable(INITIAL_MASTER_ROWS);
                 buildPartDropdown();
+                setSyncStatus('正在清空雲端對照表...');
+                try {
+                    await githubSaveFile(DATA_MASTER_PATH, [], '清空對照表');
+                    clearSyncStatus();
+                } catch (e) {
+                    clearSyncStatus();
+                    alert("⚠️ 雲端清空失敗：" + e.message);
+                }
             }
         }
 
@@ -527,7 +632,13 @@
 
         // ---- 已上傳檔案清單（逐檔記錄，可個別刪除） ----
 
+        // 讀取記憶體中的快取（頁面載入時已由 initApp() 從雲端或本機同步好）
         function loadFilesDb() {
+            return filesDbCache;
+        }
+
+        // 僅供頁面初始化時使用：從本機 localStorage 取得離線備援資料（含舊版相容搬移）
+        function loadFilesDbLocalFallback() {
             const raw = localStorage.getItem('order_files_db');
             if (raw) {
                 try { return JSON.parse(raw); } catch (e) { return []; }
@@ -552,8 +663,18 @@
             return [];
         }
 
-        function saveFilesDb(list) {
+        async function saveFilesDb(list) {
+            filesDbCache = list;
             localStorage.setItem('order_files_db', JSON.stringify(list));
+
+            setSyncStatus('正在上傳工單資料到雲端...');
+            try {
+                await githubSaveFile(DATA_ORDERS_PATH, list, `更新工單檔案清單 (${list.length} 個檔案)`);
+                clearSyncStatus();
+            } catch (e) {
+                clearSyncStatus();
+                alert("⚠️ 工單資料已存在本機，但雲端同步失敗：" + e.message);
+            }
         }
 
         function renderFileList() {
@@ -620,8 +741,7 @@
 
         // 輔助函式：從對照表取得指定件號對應的「品名」
         function getPartName(partNo) {
-            const db = JSON.parse(localStorage.getItem('order_qr_master_db') || "[]");
-            const found = db.find(item => item.partNo === partNo);
+            const found = masterDbCache.find(item => item.partNo === partNo);
             return found ? found.name : partNo; 
         }
 
@@ -633,7 +753,7 @@
             const category = categoryEl.value;
             partDropdown.innerHTML = '<option value="">-- 請選擇件號 --</option>';
 
-            const db = JSON.parse(localStorage.getItem('order_qr_master_db') || "[]");
+            const db = masterDbCache;
             const activeExcelPartNos = [...new Set(globalOrders.map(o => o.partNo))];
             
             let filteredDb = db;
@@ -664,7 +784,7 @@
             const query = input.value.trim().toLowerCase();
             if (!query) { renderSelectedQR(""); return; }
 
-            const db = JSON.parse(localStorage.getItem('order_qr_master_db') || "[]");
+            const db = masterDbCache;
             
             const matchedPartNos = db.filter(item => {
                 if (item.partNo.toLowerCase().includes(query)) return true;
@@ -1113,8 +1233,45 @@
             });
         }
 
-        combineSavedOrders();
-        loadManualTable();
+        async function initApp() {
+            setSyncStatus('正在與雲端同步...');
+
+            // 讀取對照表
+            try {
+                const remoteMaster = await githubGetFile(DATA_MASTER_PATH);
+                if (remoteMaster.content) {
+                    masterDbCache = remoteMaster.content;
+                    localStorage.setItem('order_qr_master_db', JSON.stringify(masterDbCache));
+                } else {
+                    masterDbCache = JSON.parse(localStorage.getItem('order_qr_master_db') || '[]');
+                }
+            } catch (e) {
+                console.warn('雲端對照表讀取失敗，改用本機快取', e);
+                masterDbCache = JSON.parse(localStorage.getItem('order_qr_master_db') || '[]');
+            }
+
+            // 讀取工單檔案清單
+            try {
+                const remoteOrders = await githubGetFile(DATA_ORDERS_PATH);
+                if (remoteOrders.content) {
+                    filesDbCache = remoteOrders.content;
+                    localStorage.setItem('order_files_db', JSON.stringify(filesDbCache));
+                } else {
+                    filesDbCache = loadFilesDbLocalFallback();
+                }
+            } catch (e) {
+                console.warn('雲端工單資料讀取失敗，改用本機快取', e);
+                filesDbCache = loadFilesDbLocalFallback();
+            }
+
+            combineSavedOrders();
+            renderFileList();
+            updateFileMemoryStatus();
+            loadManualTable();
+            clearSyncStatus();
+        }
+
+        initApp();
     </script>
 </body>
 </html>
