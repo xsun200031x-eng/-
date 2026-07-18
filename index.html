@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     
     <style>
         body { 
@@ -302,26 +304,24 @@
         let globalOrders = []; 
         const INITIAL_MASTER_ROWS = 100;
 
-        // ================== GitHub 雲端同步設定 ==================
-        // ⚠️ 請將下面 GITHUB_TOKEN 換成你申請的 Fine-grained Personal Access Token
-        // （只授權此 repo、只給 Contents: Read and write 權限）
-        const GITHUB_OWNER = 'xsun200031x-eng';
-        const GITHUB_REPO = '-';
-        const GITHUB_BRANCH = 'main'; // 若你的預設分支不是 main，請改成正確的分支名稱（例如 master）
-        const GITHUB_TOKEN = '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';
-        const DATA_MASTER_PATH = 'data/master_db.json';   // 對照表存放路徑
-        const DATA_ORDERS_PATH = 'data/orders_db.json';   // 已上傳工單檔案存放路徑
-        const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents`;
+        // ================== Firebase 雲端同步設定 ==================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCFiavZokWc2Xe06OQdtZr1VLanuSzXq4",
+            authDomain: "ac3-qr.firebaseapp.com",
+            projectId: "ac3-qr",
+            storageBucket: "ac3-qr.firebasestorage.app",
+            messagingSenderId: "48040555883",
+            appId: "1:48040555883:web:a9e240fd1cf57faf53482e",
+            measurementId: "G-V3QQMG9STX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const cloudDb = firebase.firestore();
+        const CLOUD_COLLECTION = 'orderQrApp';
+        const DOC_MASTER = 'masterDb';   // 對照表文件
+        const DOC_ORDERS = 'ordersDb';   // 工單檔案清單文件
 
         let masterDbCache = [];   // 對照表快取（記憶體中，供同步讀取用）
         let filesDbCache = [];    // 工單檔案清單快取（記憶體中，供同步讀取用）
-
-        function utf8ToBase64(str) {
-            return btoa(unescape(encodeURIComponent(str)));
-        }
-        function base64ToUtf8(b64) {
-            return decodeURIComponent(escape(atob((b64 || '').replace(/\n/g, ''))));
-        }
 
         function setSyncStatus(msg, isError) {
             const bar = document.getElementById('sync-status-bar');
@@ -336,46 +336,20 @@
             if (bar) bar.classList.add('hidden');
         }
 
-        // 從 GitHub 讀取一個 JSON 資料檔，回傳 { content, sha }
-        async function githubGetFile(path) {
-            const url = `${GITHUB_API_BASE}/${path}?ref=${GITHUB_BRANCH}&_=${Date.now()}`;
-            const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
-            if (res.status === 404) return { content: null, sha: null };
-            if (!res.ok) throw new Error(`GitHub 讀取失敗 (${res.status})`);
-            const data = await res.json();
-            let parsed = [];
-            try { parsed = JSON.parse(base64ToUtf8(data.content || '')); } catch (e) { parsed = []; }
-            return { content: parsed, sha: data.sha };
+        // 從 Firestore 讀取一份清單資料，回傳陣列（不存在則回傳 null）
+        async function cloudGetList(docId) {
+            const snap = await cloudDb.collection(CLOUD_COLLECTION).doc(docId).get();
+            if (!snap.exists) return null;
+            const data = snap.data();
+            return (data && Array.isArray(data.list)) ? data.list : [];
         }
 
-        // 把 JSON 資料寫回 GitHub（自動處理新建/覆寫）
-        async function githubSaveFile(path, jsonData, message) {
-            if (!GITHUB_TOKEN || GITHUB_TOKEN.startsWith('請貼上')) {
-                throw new Error('尚未設定 GitHub Token，請聯絡管理員在程式碼中填入 GITHUB_TOKEN');
-            }
-            let sha = null;
-            try { sha = (await githubGetFile(path)).sha; } catch (e) { /* 檔案可能不存在，忽略 */ }
-
-            const body = {
-                message: message || `更新資料 ${new Date().toLocaleString('zh-TW')}`,
-                content: utf8ToBase64(JSON.stringify(jsonData, null, 2)),
-                branch: GITHUB_BRANCH,
-            };
-            if (sha) body.sha = sha;
-
-            const res = await fetch(`${GITHUB_API_BASE}/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                },
-                body: JSON.stringify(body),
+        // 把一份清單資料寫回 Firestore
+        async function cloudSaveList(docId, listData) {
+            await cloudDb.collection(CLOUD_COLLECTION).doc(docId).set({
+                list: listData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || `GitHub 寫入失敗 (${res.status})`);
-            }
-            return res.json();
         }
 
         function switchTab(tab) {
@@ -502,9 +476,9 @@
         async function loadMasterDatabase() {
             setSyncStatus('正在讀取最新對照表...');
             try {
-                const remote = await githubGetFile(DATA_MASTER_PATH);
-                if (remote.content) {
-                    masterDbCache = remote.content;
+                const remote = await cloudGetList(DOC_MASTER);
+                if (remote) {
+                    masterDbCache = remote;
                     localStorage.setItem('order_qr_master_db', JSON.stringify(masterDbCache));
                 }
                 clearSyncStatus();
@@ -545,7 +519,7 @@
 
             setSyncStatus('正在上傳對照表到雲端...');
             try {
-                await githubSaveFile(DATA_MASTER_PATH, db, `更新對照表 (${db.length} 筆)`);
+                await cloudSaveList(DOC_MASTER, db);
                 clearSyncStatus();
                 alert("對照表已儲存並同步到雲端，其他裝置也能看到！");
             } catch (e) {
@@ -564,7 +538,7 @@
                 buildPartDropdown();
                 setSyncStatus('正在清空雲端對照表...');
                 try {
-                    await githubSaveFile(DATA_MASTER_PATH, [], '清空對照表');
+                    await cloudSaveList(DOC_MASTER, []);
                     clearSyncStatus();
                 } catch (e) {
                     clearSyncStatus();
@@ -669,7 +643,7 @@
 
             setSyncStatus('正在上傳工單資料到雲端...');
             try {
-                await githubSaveFile(DATA_ORDERS_PATH, list, `更新工單檔案清單 (${list.length} 個檔案)`);
+                await cloudSaveList(DOC_ORDERS, list);
                 clearSyncStatus();
             } catch (e) {
                 clearSyncStatus();
@@ -1238,9 +1212,9 @@
 
             // 讀取對照表
             try {
-                const remoteMaster = await githubGetFile(DATA_MASTER_PATH);
-                if (remoteMaster.content) {
-                    masterDbCache = remoteMaster.content;
+                const remoteMaster = await cloudGetList(DOC_MASTER);
+                if (remoteMaster) {
+                    masterDbCache = remoteMaster;
                     localStorage.setItem('order_qr_master_db', JSON.stringify(masterDbCache));
                 } else {
                     masterDbCache = JSON.parse(localStorage.getItem('order_qr_master_db') || '[]');
@@ -1252,9 +1226,9 @@
 
             // 讀取工單檔案清單
             try {
-                const remoteOrders = await githubGetFile(DATA_ORDERS_PATH);
-                if (remoteOrders.content) {
-                    filesDbCache = remoteOrders.content;
+                const remoteOrders = await cloudGetList(DOC_ORDERS);
+                if (remoteOrders) {
+                    filesDbCache = remoteOrders;
                     localStorage.setItem('order_files_db', JSON.stringify(filesDbCache));
                 } else {
                     filesDbCache = loadFilesDbLocalFallback();
