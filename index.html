@@ -3,6 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 防快取 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>工單 QR 產生器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif; background-color: #475569; -webkit-tap-highlight-color: transparent; }
+        .qr-card { background: white; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 3px solid #3b82f6; width: 140px; height: 210px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); box-sizing: border-box; border-radius: 12px; margin: 10px auto; }
+        .qr-name { font-size: 16px; font-weight: bold; margin-top: 5px; text-align: center; color: #000; width: 100%; word-break: break-all; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .qr-box { width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; }
+        .qr-box canvas { width: 100px !important; height: 100px !important; }
+        .qr-content { font-size: 10px; text-align: center; color: #000; word-break: break-all; width: 100%; line-height: 1.2; margin-bottom: 5px; padding: 0 2px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-12 text-slate-100">
+    <!-- 雲端狀態 -->
+    <div id="sync-status" class="text-[10px] text-center text-blue-300 font-mono italic pt-2">正在與雲端同步...</div>
+    
+    <!-- 這裡放回你原本的完整介面 (搜尋/手動切換/管理員按鈕等) -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>工單 QR 產生器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -294,72 +321,46 @@
                 }
             }
         });
-    </script>
+    <!-- 為了節省篇幅，請保留你原本的 HTML 結構，只需將原本的 Script 替換成下方這段 -->
 
     <script>
-        let globalOrders = []; 
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbzzGwuFfd2FcTaiKIaMHiaQOELwEaNTKkmYu2eWDQ-kA7TJdYWX3mcovEvHfBPqj5XseQ/exec";
+        // 【請填入你的 Apps Script 網址】
+        const API_URL = "https://script.google.com/macros/s/AKfycbywMat1fuQte1QDlD_KKwrGlJKXueB-Pmr2SC_Ijbg8BVpeYvUXETut46MTvupTXbvr/exec";
 
+        // 核心同步邏輯
+        async function syncDataFromCloud() {
+            const statusEl = document.getElementById('sync-status');
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
 
-let googleMaster = [];
+                // 1. 同步對照表 (Master)
+                const masterDb = data.master.slice(1).map(row => ({
+                    partNo: row[0], name: row[1], category: row[2]
+                }));
+                localStorage.setItem('order_qr_master_db', JSON.stringify(masterDb));
 
+                // 2. 同步工單 (Orders)
+                globalOrders = data.orders.slice(1).map(row => ({
+                    partNo: row[0], orderNo: row[1]
+                }));
 
-async function loadGoogleDatabase(){
-
-    try{
-
-        const res = await fetch(GOOGLE_API_URL);
-
-        const data = await res.json();
-
-
-        globalOrders = data.orders || [];
-
-        googleMaster = data.master || [];
-
-
-        console.log("Google orders:",globalOrders.length);
-
-        console.log("Google master:",googleMaster.length);
-
-
-
-        buildPartDropdown();
-
-
-    }catch(err){
-
-        console.error("Google同步失敗",err);
-
-        alert("Google資料同步失敗");
-
-    }
-
-}
-        const INITIAL_MASTER_ROWS = 100;
-
-        function switchTab(tab) {
-            const panelAuto = document.getElementById('panel-auto');
-            const panelManual = document.getElementById('panel-manual');
-            const btnAuto = document.getElementById('tab-auto-btn');
-            const btnManual = document.getElementById('tab-manual-btn');
-
-            if (tab === 'auto') {
-                if (panelAuto) panelAuto.classList.remove('hidden');
-                if (panelManual) panelManual.classList.add('hidden');
-                if (btnAuto) btnAuto.className = "py-3 px-4 rounded-xl text-sm font-bold transition-all text-white bg-blue-600 shadow-md";
-                if (btnManual) btnManual.className = "py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white";
-                renderSelectedQR(""); 
-            } else {
-                if (panelAuto) panelAuto.classList.add('hidden');
-                if (panelManual) panelManual.classList.remove('hidden');
-                if (btnAuto) btnAuto.className = "py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white";
-                if (btnManual) btnManual.className = "py-3 px-4 rounded-xl text-sm font-bold transition-all text-white bg-blue-600 shadow-md";
-                renderManualCards(); 
+                statusEl.innerText = "雲端資料已同步";
+                buildPartDropdown(); // 重新建立你的下拉選單
+            } catch (error) {
+                statusEl.innerText = "離線模式 (無法連線雲端)";
+                console.error(error);
             }
         }
 
-        function switchDbTab(tab) {
+        // 當網頁載入時啟動同步
+        window.addEventListener('load', () => {
+            syncDataFromCloud();
+            // ... 你原本其他的初始化函數 ...
+        });
+
+        // 接下來請把你原本的 buildPartDropdown, renderSelectedQR 等函數接在後面
+function switchDbTab(tab) {
             const tabs = ['files', 'mapping', 'password'];
             tabs.forEach(t => {
                 const panel = document.getElementById(`panel-db-${t}`);
@@ -657,16 +658,11 @@ async function loadGoogleDatabase(){
         }
 
         // 輔助函式：從對照表取得指定件號對應的「品名」
-       function getPartName(partNo){
-
-    const found = googleMaster.find(
-        item=>item.partNo===partNo
-    );
-
-
-    return found ? found.name : partNo;
-
-}
+        function getPartName(partNo) {
+            const db = JSON.parse(localStorage.getItem('order_qr_master_db') || "[]");
+            const found = db.find(item => item.partNo === partNo);
+            return found ? found.name : partNo; 
+        }
 
         function buildPartDropdown() {
             const categoryEl = document.getElementById('category-dropdown');
@@ -1156,8 +1152,8 @@ async function loadGoogleDatabase(){
             });
         }
 
-        loadGoogleDatabase();
-loadManualTable();
+        combineSavedOrders();
+        loadManualTable();
     </script>
 </body>
 </html>
