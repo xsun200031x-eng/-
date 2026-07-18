@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>工單 QR 產生器</title>
+    <title>工單 QR 掃描看板 (手機移動離線版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -123,15 +123,15 @@
     <div class="max-w-md mx-auto px-4 pt-16 flex flex-col gap-6">
         
         <div class="text-center">
-            <h1 class="text-xl font-black tracking-wider text-white">工單 QR 產生器</h1>
+            <h1 class="text-xl font-black tracking-wider text-white">工單 QR 掃描看板</h1>
         </div>
 
         <div class="grid grid-cols-2 bg-slate-800/80 p-1 rounded-2xl shadow-inner">
             <button id="tab-auto-btn" onclick="switchTab('auto')" class="py-3 px-4 rounded-xl text-sm font-bold transition-all text-white bg-blue-600 shadow-md">
-                搜尋工單
+                ⚡ 快速工單
             </button>
             <button id="tab-manual-btn" onclick="switchTab('manual')" class="py-3 px-4 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white">
-                手動產生
+                ✍️ 臨時手動
             </button>
         </div>
 
@@ -160,9 +160,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1.5">3. 手動搜尋 (件號 / 品名)</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5">3. 手動搜尋 (件號 / 複合品名關鍵字)</label>
                     <div class="relative">
-                        <input type="text" id="manual-search-input" oninput="searchManually()" placeholder="例：輸入「278」或「KDU」皆可搜尋" class="w-full border-2 border-slate-700 rounded-xl p-3 bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm">
+                        <input type="text" id="manual-search-input" oninput="searchManually()" placeholder="例：輸入「托架」或「A型」皆可篩選" class="w-full border-2 border-slate-700 rounded-xl p-3 bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm">
                         <button onclick="clearSearch()" class="absolute right-3 top-3 text-slate-500 hover:text-white text-sm">✕</button>
                     </div>
                 </div>
@@ -172,7 +172,7 @@
         <div id="panel-manual" class="space-y-4 hidden">
             <div class="bg-slate-800/90 rounded-2xl p-5 shadow-xl border border-slate-700/50 space-y-3">
                 <div class="flex justify-between items-center">
-                    <label class="block text-xs font-bold text-slate-400">✍️ 手動輸入（品名 / 內容）</label>
+                    <label class="block text-xs font-bold text-slate-400">✍️ 手動輸入表格（品名 / 內容）</label>
                     <button onclick="addManualRow()" class="text-xs font-bold text-blue-400 hover:text-blue-300">＋ 新增列</button>
                 </div>
                 <div class="text-[11px] text-blue-400 bg-blue-950/40 p-2 rounded-lg border border-blue-900/30">
@@ -200,14 +200,14 @@
             <div class="text-xs text-slate-400 mb-4 w-full flex justify-between items-center px-1">
                 <span class="font-bold">🎯 工單條碼顯示看板</span>
                 <div class="flex items-center gap-3">
-                    <button onclick="downloadAllVisibleCards()" class="text-blue-400 hover:text-blue-300 font-bold">⬇️ 下載</button>
+                    <button onclick="downloadAllVisibleCards()" class="text-blue-400 hover:text-blue-300 font-bold">⬇️ 下載全部</button>
                     <span id="match-count" class="text-blue-400 font-bold"></span>
                 </div>
             </div>
             
             <div id="results-container" class="w-full flex flex-wrap justify-center gap-4">
                 <div id="empty-state-hint" class="text-center py-12 text-slate-500 text-sm">
-                    請選取上方分類，或切換到「手動產生」打字。
+                    請選取上方分類，或切換到「臨時手動」打字。
                 </div>
             </div>
         </div>
@@ -231,7 +231,7 @@
             
 <div id="panel-db-files" class="p-5 flex flex-col gap-4 overflow-y-auto">
     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-        <label class="block text-xs font-bold text-slate-400 mb-2">📁 選擇工單檔案</label>
+        <label class="block text-xs font-bold text-slate-400 mb-2">📁 選擇工單檔案（可一次選多個）</label>
         <input type="file" id="excel-files" accept=".xlsx,.xls,.csv" multiple
         class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer" />
         <p id="file-status" class="text-[10px] text-slate-500 mt-2 font-mono">尚未載入記憶</p>
@@ -248,7 +248,7 @@
 
 <div id="panel-db-mapping" class="p-5 flex flex-col gap-3 overflow-y-auto hidden">
                 <div class="text-[11px] text-blue-400 bg-blue-950/40 p-2 rounded-lg border border-blue-900/30">
-                    💡 <b>小技巧：</b>品名欄位可以使用斜線 <code>/</code> 或逗號 <code>,</code> 隔開多個名字（例如：<code>278/KDU</code>），手動搜尋時打任何一個字都能完美找到！
+                    💡 <b>小技巧：</b>品名欄位可以使用斜線 <code>/</code> 或逗號 <code>,</code> 隔開多個名字（例如：<code>前托架/中葉/車削</code>），手動搜尋時打任何一個字都能完美找到！
                 </div>
                 <div class="flex-grow overflow-x-auto overflow-y-auto border border-slate-800 rounded-xl max-h-[250px] no-scrollbar bg-slate-950">
                     <table class="w-full text-left border-collapse text-xs">
@@ -269,7 +269,7 @@
             </div>
 
             <div id="panel-db-password" class="p-5 flex flex-col gap-4 overflow-y-auto hidden">
-                <input type="password" id="new-admin-password" placeholder="預設密碼為 工號" class="w-full border-2 border-slate-800 rounded-xl p-3 bg-slate-950 font-bold focus:outline-none text-white text-sm">
+                <input type="password" id="new-admin-password" placeholder="預設密碼為 1234..." class="w-full border-2 border-slate-800 rounded-xl p-3 bg-slate-950 font-bold focus:outline-none text-white text-sm">
                 <button onclick="changeAdminPassword()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs w-full shadow mt-2">更新密碼</button>
             </div>
         </div>
