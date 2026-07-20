@@ -151,6 +151,7 @@
                         <option value="馬達殼">馬達殼</option>
                         <option value="軛護套">軛護套</option>
                         <option value="軛總成">軛總成</option>
+                        <option value="軛S組成">軛S組成</option>
                         <option value="鐵心">鐵心</option>
                         <option value="整流子">整流子</option>
                     </select>
@@ -758,7 +759,13 @@
             const query = input.value.trim().toLowerCase();
             if (!query) { renderSelectedQR(""); return; }
 
-            const db = masterDbCache;
+            const categoryEl = document.getElementById('category-dropdown');
+            const category = categoryEl ? categoryEl.value : 'ALL';
+
+            let db = masterDbCache;
+            if (category && category !== 'ALL') {
+                db = db.filter(item => item.category === category);
+            }
             
             const matchedPartNos = db.filter(item => {
                 if (item.partNo.toLowerCase().includes(query)) return true;
