@@ -353,6 +353,22 @@
             });
         }
 
+        // 讀取／寫入設定值（例如管理員密碼），存在同一個 settings 文件裡
+        async function cloudGetSetting(key) {
+            const snap = await cloudDb.collection(CLOUD_COLLECTION).doc('settings').get();
+            if (!snap.exists) return null;
+            const data = snap.data();
+            return (data && data[key] !== undefined) ? data[key] : null;
+        }
+        async function cloudSaveSetting(key, value) {
+            await cloudDb.collection(CLOUD_COLLECTION).doc('settings').set({
+                [key]: value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+
+        let adminPasswordCache = null; // 管理員密碼快取（記憶體中，由雲端同步）
+
         function switchTab(tab) {
             const panelAuto = document.getElementById('panel-auto');
             const panelManual = document.getElementById('panel-manual');
@@ -388,7 +404,7 @@
             if (targetBtn) targetBtn.className = "py-2.5 rounded-lg text-white bg-blue-600 shadow";
         }
 
-        function getAdminPassword() { return localStorage.getItem('order_qr_admin_pw') || "1234"; }
+        function getAdminPassword() { return adminPasswordCache || "1234"; }
 
         function checkAdminPassword() {
             const input = prompt("請輸入管理員密碼：");
@@ -408,11 +424,20 @@
             }
         }
 
-        function changeAdminPassword() {
+        async function changeAdminPassword() {
             const newPw = document.getElementById('new-admin-password').value.trim();
             if (!newPw) { alert("密碼不能為空！"); return; }
-            localStorage.setItem('order_qr_admin_pw', newPw);
-            alert("密碼修改完成！");
+            adminPasswordCache = newPw;
+            localStorage.setItem('order_qr_admin_pw', newPw); // 保留本機備援
+            setSyncStatus('正在同步新密碼到雲端...');
+            try {
+                await cloudSaveSetting('adminPassword', newPw);
+                clearSyncStatus();
+                alert("密碼修改完成，已同步到雲端，所有裝置都會生效！");
+            } catch (e) {
+                clearSyncStatus();
+                alert("⚠️ 密碼已在本機生效，但雲端同步失敗，其他裝置可能還是舊密碼：" + e.message);
+            }
             document.getElementById('new-admin-password').value = "";
         }
 
@@ -1217,6 +1242,20 @@
 
         async function initApp() {
             setSyncStatus('正在與雲端同步...');
+
+            // 讀取管理員密碼
+            try {
+                const remotePw = await cloudGetSetting('adminPassword');
+                if (remotePw) {
+                    adminPasswordCache = remotePw;
+                    localStorage.setItem('order_qr_admin_pw', remotePw);
+                } else {
+                    adminPasswordCache = localStorage.getItem('order_qr_admin_pw') || "1234";
+                }
+            } catch (e) {
+                console.warn('雲端密碼讀取失敗，改用本機快取', e);
+                adminPasswordCache = localStorage.getItem('order_qr_admin_pw') || "1234";
+            }
 
             // 讀取對照表
             try {
